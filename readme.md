@@ -1,5 +1,25 @@
-# Context Graph–Driven Conversational AI Assistant
-### Education / Career-Readiness SaaS Platform · AI Internship Assignment
+# 🧠 Context Graph–Driven Conversational AI Assistant
+
+> An AI co-pilot for students that *thinks before it talks* — it queries a live property graph of the user's goals, courses, and assignments to select only the context that actually matters, then feeds that focused snapshot to an LLM.
+
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-blueviolet)
+![Gemini](https://img.shields.io/badge/Gemini_2.0_Flash-LLM-4285F4?logo=google&logoColor=white)
+![NetworkX](https://img.shields.io/badge/NetworkX-Graph-orange)
+![Pydantic](https://img.shields.io/badge/Pydantic_v2-Schema_Validation-e92063)
+![sentence-transformers](https://img.shields.io/badge/sentence--transformers-Semantic_Search-brightgreen)
+
+**Built for:** Education / Career-Readiness SaaS Platform — AI Internship Assignment
+
+### Why this approach?
+
+| Problem with naïve chatbots | This project's solution |
+|-----------------------------|------------------------|
+| Dump entire user profile into every prompt | Query only the subgraph relevant to *this* turn |
+| Keyword matching for entity references | Semantic cosine similarity via `all-MiniLM-L6-v2` |
+| Flat chat history grows without bound | Sliding-window pruner caps graph at `MAX_HISTORY_TURNS` |
+| No multi-tenant isolation in code | `tenant_id` enforced at state *and* data layer |
+| Hard-coded intent lists break on typos | Token-scoring + `difflib` fuzzy matching |
 
 ---
 
@@ -9,10 +29,12 @@
 3. [Context Graph Design](#context-graph-design)
 4. [LangGraph Flow](#langgraph-flow)
 5. [Graph vs. Baseline — Why It Matters](#graph-vs-baseline)
-6. [Running the Project](#running-the-project)
-7. [Example Conversation Trace](#example-conversation-trace)
-8. [Limitations](#limitations)
-9. [Scaling to Multi-Tenant SaaS](#scaling-to-multi-tenant-saas)
+6. [Setup & Installation](#setup--installation)
+7. [Environment Variables](#environment-variables)
+8. [LLM Justification](#llm-justification)
+9. [Example Conversation Trace](#example-conversation-trace)
+10. [Limitations](#limitations)
+11. [Scaling to Multi-Tenant SaaS](#scaling-to-multi-tenant-saas)
 
 ---
 
@@ -31,41 +53,126 @@ explicit, inspectable, and independently testable.
 
 ## Architecture
 
+### LangGraph Pipeline
+
+```mermaid
+flowchart TD
+    UI["🖥️ Platform UI\nuser_message · user_id · current_screen"]
+
+    subgraph Pipeline["⚙️ LangGraph Pipeline"]
+        A["1️⃣ ingest_message\nClassify intent · Semantic entity extraction\n(all-MiniLM-L6-v2 cosine similarity)"]
+        B["2️⃣ update_graph\nPersist ConversationTurn\nSliding-window pruner MAX_HISTORY_TURNS"]
+        C["3️⃣ query_graph\nbuild_relevant_subgraph()\nTenant-isolated subgraph pull"]
+        D["4️⃣ build_prompt\nSerialise subgraph → structured prompt"]
+        E["5️⃣ generate_response\nGemini 2.0 Flash\n↓ fallback: Mistral-7B → Zephyr-7B"]
+        F["6️⃣ post_process\nPersist AI turn · refresh history"]
+    end
+
+    subgraph GraphDB["🗄️ ContextGraph (NetworkX)"]
+        G["Pydantic-validated nodes\nUser · Goal · Course\nAssignment · Screen\nConversationTurn · Resource"]
+        H["_embed_store\nnp.float32 embeddings\nper node"]
+    end
+
+    UI --> A
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> GraphDB
+    B --> GraphDB
+    A -.->|"cosine search"| H
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  Platform UI (SaaS frontend)            │
-│  emits:  current_screen, user_id, user_message          │
-└───────────────────────┬─────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│               LangGraph Pipeline                        │
-│                                                         │
-│  1. ingest_message   ← classify intent, extract refs    │
-│  2. update_graph     ← persist new ConversationTurn     │
-│  3. query_graph      ← build_relevant_subgraph()        │
-│  4. build_prompt     ← render graph context → string    │
-│  5. generate_response← LLM call (GPT-4o-mini)           │
-│  6. post_process     ← persist AI turn; update history  │
-└───────────────────────┬─────────────────────────────────┘
-                        │
-          ┌─────────────▼──────────────┐
-          │    ContextGraph (NetworkX)  │
-          │  nodes:  User, Goal,        │
-          │    Course, Assignment,      │
-          │    Screen, ConvTurn,        │
-          │    Resource                 │
-          └────────────────────────────┘
+
+### Context Graph Schema
+
+```mermaid
+graph LR
+    U(["👤 User\nname · role · grade"])
+    G(["🎯 Goal\ntitle · deadline · progress"])
+    C(["📚 Course\nname · instructor · schedule"])
+    A(["📝 Assignment\ntitle · due_date · status"])
+    S(["🖥️ Screen\nname · description"])
+    T(["💬 ConversationTurn\nrole · content · intent"])
+    R(["🔗 Resource\ntitle · url · type"])
+
+    U -->|"HAS_GOAL"| G
+    U -->|"ENROLLED_IN"| C
+    U -->|"WORKING_ON"| A
+    U -->|"CURRENTLY_ON"| S
+    U -->|"HAD_TURN"| T
+    G -->|"REQUIRES"| A
+    A -->|"PART_OF"| C
+    T -->|"REFERENCES"| G
+    T -->|"REFERENCES"| A
+    G -->|"SUGGESTED"| R
+    G -->|"RELATED_TO"| G
 ```
 
 ### File Structure
 
 ```
-├── context_graph.py    # Graph schema, node/edge factories, query methods
-├── langgraph_flow.py   # LangGraph state machine + prompt builders
+├── context_graph.py    # Pydantic node schemas, embedding store, graph queries
+├── langgraph_flow.py   # LangGraph state machine, intent classifier, entity extractor
 ├── main.py             # Seed data, demo runner, baseline comparison
+├── requirements.txt    # All dependencies
 └── README.md
 ```
+
+---
+
+## Setup & Installation
+
+### Prerequisites
+- Python **3.10+**
+- A [Google AI Studio](https://aistudio.google.com/) API key (free tier works)
+- Optional: A [HuggingFace](https://huggingface.co/settings/tokens) access token for the fallback LLM chain
+
+### Steps
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/ManoharKonala/context-graph-driven-conversational-AI-assistant.git
+cd context-graph-driven-conversational-AI-assistant
+
+# 2. (Recommended) Create and activate a virtual environment
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # macOS / Linux
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Add your API keys to a .env file or export them (see below)
+
+# 5. Run the demo
+python main.py
+```
+
+> **First-run note:** `sentence-transformers` downloads `all-MiniLM-L6-v2` (~90 MB)
+> on first use and caches it locally. Subsequent runs load it in ~2 seconds.
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the project root **or** export the variables in your shell before running `main.py`.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GOOGLE_API_KEY` | ✅ Yes | — | Gemini API key. Get one free at [aistudio.google.com](https://aistudio.google.com/). |
+| `HF_TOKEN` | ⬜ No | — | HuggingFace access token. Only needed if Gemini is unavailable and the fallback LLM chain activates. |
+| `MAX_HISTORY_TURNS` | ⬜ No | `20` | Maximum `ConversationTurn` nodes kept per user. Older turns are pruned automatically — no restart needed. |
+
+### Example `.env`
+
+```env
+GOOGLE_API_KEY=AIzaSy...
+HF_TOKEN=hf_...
+MAX_HISTORY_TURNS=20
+```
+
+> ⚠️ Add `.env` to your `.gitignore`. Never commit API keys.
 
 ---
 

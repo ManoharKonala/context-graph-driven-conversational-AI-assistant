@@ -1,0 +1,15 @@
+# Core graph + orchestration
+networkx>=3.2
+langgraph>=0.1.0
+langchain-core>=0.1.0
+
+# LLM providers
+langchain-google-genai>=1.0.0
+huggingface_hub>=0.22.0
+
+# Semantic entity extraction
+sentence-transformers>=2.7.0
+numpy>=1.26.0
+
+# Schema validation
+pydantic>=2.0.0

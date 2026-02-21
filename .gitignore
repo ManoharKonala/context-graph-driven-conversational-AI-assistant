@@ -1,0 +1,18 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Sentence-transformers model cache (downloaded at runtime)
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
