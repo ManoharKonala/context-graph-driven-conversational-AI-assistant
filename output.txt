@@ -1,0 +1,358 @@
+
+════════════════════════════════════════════════════════════════════════
+  CONTEXT GRAPH SNAPSHOT
+════════════════════════════════════════════════════════════════════════
+  Nodes (12):    2× Assignment, 2× ConversationTurn, 2× Course, 2× Goal, 2× Resource, 1× Screen, 1× User
+  Edges (15):    1× CURRENTLY_ON, 2× ENROLLED_IN, 2× HAD_TURN, 2× HAS_GOAL, 2× PART_OF, 1× REFERENCES, 1× REQUIRES, 2× SUGGESTED, 2× WORKING_ON
+
+  [Maya Chen] ──HAS_GOAL──► [Apply to Computer Science programs]
+  [Maya Chen] ──HAS_GOAL──► [Improve SAT Math score to 760+]
+  [Maya Chen] ──ENROLLED_IN──► [AP Computer Science A]
+  [Maya Chen] ──ENROLLED_IN──► [AP English Language]
+  [Maya Chen] ──WORKING_ON──► [College Personal Statement Draft]
+  [Maya Chen] ──WORKING_ON──► [Sorting Algorithms Lab]
+  [Maya Chen] ──CURRENTLY_ON──► [My Goals]
+  [Maya Chen] ──HAD_TURN──► [turn_prior_1]
+  [Maya Chen] ──HAD_TURN──► [turn_prior_2]
+  [Apply to Computer Science programs] ──REQUIRES──► [College Personal Statement Draft]
+  [Apply to Computer Science programs] ──SUGGESTED──► [Common App Guide 2024]
+  [Apply to Computer Science programs] ──SUGGESTED──► [How to Write a CS-Focused Personal Statement]
+  [College Personal Statement Draft] ──PART_OF──► [AP English Language]
+  [Sorting Algorithms Lab] ──PART_OF──► [AP Computer Science A]
+  [turn_prior_1] ──REFERENCES──► [College Personal Statement Draft]
+
+Running BASELINE conversation (no context graph)…
+[WARN] Gemini failed (ChatGoogleGenerativeAIError); using HuggingFace fallback…
+[WARN] Gemini failed (ChatGoogleGenerativeAIError); using HuggingFace fallback…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 1 failed (HfHubHTTPError); retrying in 1s…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 2 failed (HfHubHTTPError); retrying in 2s…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 3 failed (HfHubHTTPError); retrying in 4s…
+[WARN] All retries exhausted for mistralai/Mistral-7B-Instruct-v0.2; trying next model…
+[WARN] Gemini failed (ChatGoogleGenerativeAIError); using HuggingFace fallback…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 1 failed (HfHubHTTPError); retrying in 1s…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 2 failed (HfHubHTTPError); retrying in 2s…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 3 failed (HfHubHTTPError); retrying in 4s…
+[WARN] All retries exhausted for mistralai/Mistral-7B-Instruct-v0.2; trying next model…
+Running GRAPH-AWARE conversation…
+[WARN] Gemini failed (ChatGoogleGenerativeAIError); using HuggingFace fallback…
+[WARN] Gemini failed (ChatGoogleGenerativeAIError); using HuggingFace fallback…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 1 failed (HfHubHTTPError); retrying in 1s…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 2 failed (HfHubHTTPError); retrying in 2s…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 3 failed (HfHubHTTPError); retrying in 4s…
+[WARN] All retries exhausted for mistralai/Mistral-7B-Instruct-v0.2; trying next model…
+[WARN] Gemini failed (ChatGoogleGenerativeAIError); using HuggingFace fallback…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 1 failed (HfHubHTTPError); retrying in 1s…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 2 failed (HfHubHTTPError); retrying in 2s…
+[WARN] HF mistralai/Mistral-7B-Instruct-v0.2 attempt 3 failed (HfHubHTTPError); retrying in 4s…
+[WARN] All retries exhausted for mistralai/Mistral-7B-Instruct-v0.2; trying next model…
+
+════════════════════════════════════════════════════════════════════════
+  BASELINE vs CONTEXT GRAPH — Side-by-Side Comparison
+════════════════════════════════════════════════════════════════════════
+
+Turn 1: I'm not sure how to start my personal statement. Any ideas?
+────────────────────────────────────────────────────────────────────────
+▶ BASELINE RESPONSE (no context graph):
+  Starting your personal statement can be both exciting and daunting,
+  but a good opening sets the tone for the rest of your essay. Your
+  first few paragraphs should quickly engage the reader while
+  introducing your story, goals, and the themes that will guide your
+  statement. Here are several strategies and examples to help you
+  brainstorm a strong opening:  ---  ### **1. Start with a Hook – A
+  Thought-Provoking or Memorable Statement** Hooks draw the reader’s
+  attention right away. You can start with a bold idea, a question, an
+  interesting fact, or even a famous quote that resonates with you.
+  The key is to connect it to your motivation or identity as a future
+  academic/medical professional/etc.  **Examples:** - *"The first time
+  I realized that science could change lives, I was standing in a
+  hospital corridor holding the file for a patient who suffered severe
+  allergies—but was now symptom-free because of immunotherapy."* (For
+  Health Sciences/Doctor) - *"I come from nothing, but I’m determined
+  to build my way into something."* (For a student who is the first-
+  generation, low-income, or underprivileged) - *"When I saw the image
+  of a DNA strand twist through a microscopy slide, I felt my heart
+  race—not out of excitement for a discovery, but out of wonder: This
+  was a visual proof of life’s endless complexity, of the
+  interconnectedness between all living things."*  **Try this if:**
+  You have a personal moment (e.g., an inspirational experience) or a
+  unique story that relates to your field. → **Brainstorm:** What was
+  a pivotal moment in your development? Could it be academic, medical,
+  social, ethical, or personal?  ---  ### **2. Introduce Your Theme
+  (Sometimes Implicitly)** Instead of jumping straight into your
+  qualifications or career aspirations, you can start by establishing
+  a central theme or focus that will run throughout your essay. This
+  can be a belief, problem, skill, or passion that ties everything
+  together.  **Examples:** - *"What makes us human isn’t just our
+  ability to reason: It’s our ability to care, to heal, and to stand
+  with those in need."* (For Medicine and/or Health Studies) -
+  *"Facing language and cultural barriers while teaching English in a
+  rural Cambodian village taught me what it means to truly
+  collaborate."* (For Linguistics, International Relations, or
+  Education) - *"My most persistent question since childhood has been:
+  ‘How did they do that?’—whether it’s designing a bridge, performing
+  surgery,
+
+▶ GRAPH-AWARE RESPONSE:
+  Maya, with your **60% progress on improving your SAT Math** and
+  **active Computer Science program application goal** (due Nov 1,
+  2024), your personal statement has room for both personal
+  experiences and your quantitative strengths.  Try one of these
+  starters—pick the angle that resonates with you: 1. **Hook with a CS
+  project-related question** (e.g., *"When I first debugged my
+  implementation of Merge Sort for the lab this week, the moment the
+  array became perfectly sorted felt like unlocking a secret. That
+  curiosity drives me to study Computer Science."*) 2. **Gaps in
+  learning** (e.g., *"Initially, problems like linear algebra left me
+  baffled. But as I pushed toward my target Math SAT score (760+), I
+  discovered a love for the precision required to turn abstract
+  concepts into numerical answers—what appeals to me about
+  programming’s logic."*) 3. **Your long-term pursuit** (e.g., *"For
+  years, I’ve sought to understand how technology can solve intricate
+  challenges, whether in problem-solving or creativity... Now,
+  applying to CS programs lets me bridge these passions formally."*)
+  Would you like me to help refine one or tailor examples to topics
+  from your recent **Sorting Algorithms Lab** assignment? Keep your
+  **SAT Math practice!** – You have until **October 5th** to hit your
+  benchmark.
+
+────────────────────────────────────────────────────────────────────────
+
+Turn 2: What deadline should I keep in mind?
+────────────────────────────────────────────────────────────────────────
+▶ BASELINE RESPONSE (no context graph):
+  The deadline for your personal statement may vary depending on the
+  specific application you are submitting it for. However, here are a
+  few tips that could help you get started:  1. Brainstorm: Before you
+  begin writing your personal statement, take some time to think about
+  your experiences, skills, and goals. Write down any achievements,
+  challenges, and qualities that make you stand out as a candidate.
+  Reflect on why you're applying to this program or institution and
+  what you hope to gain from it. What motivated you to pursue this
+  path of study? Think about the unique perspective you can bring to
+  the community, and the specific qualities that make you the best fit
+  for the program.  2. Understand the prompt: Read the instructions
+  carefully and make sure you fully understand what the application
+  committee is looking for. Follow the guidelines set out by the
+  university or institution regarding length, formatting, and content
+  requirements.  3. Introduction: Introduce yourself and your
+  motivation. Make an engaging opening that demonstrates your
+  enthusiasm for the program and why you are applying. Be specific and
+  persuasive, grabbing the reader's attention from the very beginning.
+  4. Body paragraphs: Develop your ideas by providing concrete
+  examples and evidence. Highlight your skills, knowledge, and
+  experiences that exemplify your suitability for the program. Address
+  any gaps in your educational background and explain how they could
+  contribute to its dynamics. Showcase your understanding of the
+  program and the skills you've acquired that enable you to solve
+  problems and grow in your field.  5. Conclusion: Finish with a
+  powerful conclusion and a call to action, summarizing your statement
+  and reminding the committee of your fit for the program. Consider
+  emphasizing your personal goals and ambitions for enrollment.  6.
+  Edit and revise: Prove your statement is error-free, engaging and
+  concise. Double-check facts, grammar, and spelling. Make sure you're
+  highlighting your abilities and potential advantages from every
+  angle possible.  7. Get feedback: Ask a teacher or a trusted mentor
+  or professional for feedback before submitting. Have a friend,
+  tutor, or a fellow student review your essay, gaining insight from
+  outside perspectives.  8. Formatting: Follow the prompts' guidelines
+  for formatting, and proofread thoroughly to be sure to meet length
+  requirements and style requirements.  9. Be honest: Avoid generic
+  language, plagiarism, and
+
+▶ GRAPH-AWARE RESPONSE:
+  The deadline you should keep in mind for your personal statement is
+  November 1, 2024, as that is the deadline for applying to Computer
+  Science programs. When thinking about how to start, consider using
+  your experiences with your Sorting Algorithms Lab assignment as
+  inspiration. You could begin by sharing a question that sparked your
+  interest in computer science, like "When I first debugged my
+  implementation of Merge Sort for the lab assignment, I felt a sense
+  of satisfaction that reminded me of my passion for learning the
+  precise logic and numerical solutions to complex problems that
+  computer science offers." Alternatively, you could touch on the gaps
+  in learning you've overcome in math, saying "Initially, the mystery
+  of linear algebra left me stumped, but my pursuit of a 760+ SAT Math
+  score and Computer Science programs has opened a new appreciation
+  for the precision required in addressing abstract concepts through
+  programming." Remember to follow the progress percentages provided
+  and make sure to incorporate resources you've utilized like the
+  Common App Guide and How to Write a CS-Focused Personal Statement to
+  craft a compelling statement. Keep up the good work with your SAT
+  Math practice!
+
+────────────────────────────────────────────────────────────────────────
+
+Turn 3: Can you give me tips that are specific to a CS applicant?
+────────────────────────────────────────────────────────────────────────
+▶ BASELINE RESPONSE (no context graph):
+  Certainly! As an applicant to a CS program, some ideas to consider
+  for starting your personal statement could be:  - Reflect on your
+  personal journey to becoming interested in computer science. Did a
+  specific course, project, or experience spark your interest in the
+  field? Did you always enjoy solving problems or working with
+  technology growing up? Did you discover your passion later in life?
+  How has your interest evolved? Write about your excitement for
+  learning and problem-solving challenges. - Discuss your experience
+  with computer science courses or programming. What have you enjoyed
+  about them? Have you taken any notable computer science projects
+  outside of class? Were there challenges you overcame while learning
+  a new programming language or tool? - Write about your goals for
+  pursuing a degree in CS, such as whether you're hoping to contribute
+  to a niche in the industry or learn a specific skillset applying CS
+  principles to an unrelated field. Are you passionate about the
+  opportunities and advancements in the field, like AI or
+  cybersecurity? - Elaborate on relevant work or volunteer experience.
+  Even if it's not directly CS-related, mention how transferable
+  skills you gained from those positions can be relevant to CS. - Talk
+  about what you can offer the program and how it could benefit from
+  having students with your unique background or perspective. This
+  could include anything from your cultural background or personal
+  identities, such as being a first-generation college student or
+  having foreign language proficiency.  Consider what you hope to
+  contribute to the CS community and how your background makes you
+  stand out from others applying to the same program. Be sure to
+  proofread your statement for grammar and clarity!  Remember, this
+  should be a concise yet powerful introduction to your personality,
+  experiences, and enthusiasm for computer science as a student. Focus
+  on your motivation and values, but don't forget to demonstrate your
+  writing skills. Good luck!
+
+▶ GRAPH-AWARE RESPONSE:
+  Absolutely! Here are some tips for crafting a compelling personal
+  statement as a CS applicant:  1. Highlight your passion for CS:
+  Share a moment that sparked your interest in computer science, like
+  "When I discovered the satisfaction of sorting algorithms during the
+  lab assignment left me eager to develop my logical reasoning skills
+  through computer science."  2. Emphasize your growth mindset:
+  "Although I initially struggled with algebra concepts, the precision
+  required to achieve my target SAT score and pursue computer science
+  programs has fueled my determination."  3. Show how CS aligns with
+  your long-term goals: "For years, I've been passionate about
+  addressing intricate challenges through computing. This CS pursuit
+  aligns with my interest in applying precision to abstract concepts
+  through programming."  Remember to incorporate any resources you've
+  utilized, such as the Common App Guide and "How to Write a CS-
+  Focused Personal Statement," and aim for concision while addressing
+  the deadlines and progress percentages provided by the platform.
+  Good luck!  Incorporate any challenges you've faced and how you've
+  overcome them, as it will show your grit and growth mindset.
+  Remember to always address the platform screens and percentages.
+
+────────────────────────────────────────────────────────────────────────
+
+════════════════════════════════════════════════════════════════════════
+  SUBGRAPH USED FOR FINAL TURN (JSON)
+════════════════════════════════════════════════════════════════════════
+{
+  "user": {
+    "id": "user_maya",
+    "type": "User",
+    "created_at": "2026-02-21T08:32:41.407415",
+    "name": "Maya Chen",
+    "role": "student",
+    "grade": "11",
+    "school": "Lincoln High"
+  },
+  "current_screen": {
+    "id": "screen_goals",
+    "type": "Screen",
+    "created_at": "2026-02-21T08:32:41.407505",
+    "name": "My Goals",
+    "description": "Dashboard showing all student goals and progress bars"
+  },
+  "active_goals": [
+    {
+      "id": "goal_cs_degree",
+      "type": "Goal",
+      "created_at": "2026-02-21T08:32:41.407436",
+      "title": "Apply to Computer Science programs",
+      "deadline": "2024-11-01",
+      "progress": 45,
+      "status": "active",
+      "description": "Targeting UC schools and CMU early decision",
+      "resources": [
+        {
+          "id": "res_commonapp",
+          "type": "Resource",
+          "created_at": "2026-02-21T08:32:41.407512",
+          "title": "Common App Guide 2024",
+          "url": "https://commonapp.org/apply/",
+          "res_type": "guide"
+        },
+        {
+          "id": "res_cs_essay_tips",
+          "type": "Resource",
+          "created_at": "2026-02-21T08:32:41.407519",
+          "title": "How to Write a CS-Focused Personal Statement",
+          "url": "https://blog.collegevine.com/cs-personal-statement",
+          "res_type": "article"
+        }
+      ]
+    },
+    {
+      "id": "goal_sat",
+      "type": "Goal",
+      "created_at": "2026-02-21T08:32:41.407453",
+      "title": "Improve SAT Math score to 760+",
+      "deadline": "2024-10-05",
+      "progress": 60,
+      "status": "active",
+      "description": "",
+      "resources": []
+    }
+  ],
+  "focal_goal": null,
+  "active_assignment": {
+    "id": "asgn_sorting_lab",
+    "type": "Assignment",
+    "created_at": "2026-02-21T08:32:41.407496",
+    "title": "Sorting Algorithms Lab",
+    "due_date": "2024-09-18",
+    "status": "pending",
+    "instructions": "Implement merge sort and quicksort in Java; benchmark both on arrays of 1k, 10k, 100k integers.",
+    "course_id": "course_ap_cs"
+  },
+  "recent_conversation": [
+    {
+      "id": "turn_867d5234",
+      "type": "ConversationTurn",
+      "created_at": "2026-02-21T08:38:05.446361",
+      "role": "assistant",
+      "content": "Absolutely! Here are some tips for crafting a compelling personal statement as a CS applicant:\n\n1. Highlight your passion for CS: Share a moment that sparked your interest in computer science, like \"When I discovered the satisfaction of sorting algorithms during the lab assignment left me eager to develop my logical reasoning skills through computer science.\"\n\n2. Emphasize your growth mindset: \"Although I initially struggled with algebra concepts, the precision required to achieve my target SAT score and pursue computer science programs has fueled my determination.\"\n\n3. Show how CS aligns with your long-term goals: \"For years, I've been passionate about addressing intricate challenges through computing. This CS pursuit aligns with my interest in applying precision to abstract concepts through programming.\"\n\nRemember to incorporate any resources you've utilized, such as the Common App Guide and \"How to Write a CS-Focused Personal Statement,\" and aim for concision while addressing the deadlines and progress percentages provided by the platform. Good luck!\n\nIncorporate any challenges you've faced and how you've overcome them, as it will show your grit and growth mindset. Remember to always address the platform screens and percentages.",
+      "intent": "response",
+      "entities": [],
+      "timestamp": "2026-02-21T08:38:05.446351"
+    },
+    {
+      "id": "turn_8b86d4ac",
+      "type": "ConversationTurn",
+      "created_at": "2026-02-21T08:37:09.307594",
+      "role": "user",
+      "content": "Can you give me tips that are specific to a CS applicant?",
+      "intent": "general_inquiry",
+      "entities": [],
+      "timestamp": "2026-02-21T08:37:09.307588"
+    },
+    {
+      "id": "turn_9582af5c",
+      "type": "ConversationTurn",
+      "created_at": "2026-02-21T08:37:09.306597",
+      "role": "assistant",
+      "content": "The deadline you should keep in mind for your personal statement is November 1, 2024, as that is the deadline for applying to Computer Science programs. When thinking about how to start, consider using your experiences with your Sorting Algorithms Lab assignment as inspiration. You could begin by sharing a question that sparked your interest in computer science, like \"When I first debugged my implementation of Merge Sort for the lab assignment, I felt a sense of satisfaction that reminded me of my passion for learning the precise logic and numerical solutions to complex problems that computer science offers.\" Alternatively, you could touch on the gaps in learning you've overcome in math, saying \"Initially, the mystery of linear algebra left me stumped, but my pursuit of a 760+ SAT Math score and Computer Science programs has opened a new appreciation for the precision required in addressing abstract concepts through programming.\" Remember to follow the progress percentages provided and make sure to incorporate resources you've utilized like the Common App Guide and How to Write a CS-Focused Personal Statement to craft a compelling statement. Keep up the good work with your SAT Math practice!",
+      "intent": "response",
+      "entities": [],
+      "timestamp": "2026-02-21T08:37:09.306589"
+    },
+    {
+      "id": "turn_efa36f17",
+      "type": "ConversationTurn",
+      "created_at": "2026-02-21T08:36:12.765051",
+      "role": "user",
+      "content": "What deadline should I keep in mind?",
+      "intent": "deadline_check",
+      "entities": [],
+      "timestamp": "2026-02-21T08:36:12.765040"
+    }
+  ],
+  "inferred_intent": "response"
+}
