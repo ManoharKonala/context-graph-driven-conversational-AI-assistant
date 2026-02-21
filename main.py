@@ -7,10 +7,10 @@ main.py
 4. Prints side-by-side results so the quality difference is observable.
 
 Run:
-    OPENAI_API_KEY=sk-... python main.py
+    GOOGLE_API_KEY=... HF_TOKEN=... python main.py
 
 Dependencies:
-    pip install networkx langgraph langchain-openai
+    pip install networkx langgraph langchain-google-genai langchain-core huggingface_hub
 """
 
 from __future__ import annotations
@@ -143,10 +143,12 @@ DIVIDER = "─" * 72
 
 def run_conversation(turns: list[str], mode: str,
                      context_graph: ContextGraph | None,
-                     user_id: str) -> list[dict]:
+                     user_id: str,
+                     tenant_id: str = "tenant_lincoln_high") -> list[dict]:
     """Run multiple turns and return list of {user, assistant} dicts."""
     graph_app = build_assistant_graph()
     state: AssistantState = {
+        "tenant_id": tenant_id,          # ← multi-tenant isolation key
         "user_id": user_id,
         "user_message": "",
         "mode": mode,

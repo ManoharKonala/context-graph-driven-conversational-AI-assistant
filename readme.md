@@ -69,6 +69,36 @@ explicit, inspectable, and independently testable.
 
 ---
 
+## LLM Justification
+
+This pipeline is prompt-heavy by design: every turn serialises a structured
+subgraph JSON into a system prompt and expects the model to follow its schema
+precisely.  That drives two technical requirements — large useful context window
+and strong instruction-following — which informed the model choices below.
+
+### Primary: Google Gemini 2.0 Flash
+
+| Property | Why it matters here |
+|----------|---------------------|
+| **1 M-token context window** | The serialised subgraph + history can grow large across turns. A 1 M-token ceiling means the pipeline never needs to truncate structured context. |
+| **Low time-to-first-token (TTFT)** | Gemini Flash is optimised for latency over throughput — the right tradeoff for an interactive chat assistant where >3 s feels broken. |
+| **IFEval instruction-following** | Gemini Flash scores competitively on IFEval (instruction-following benchmark), directly analogous to consuming a graph-serialised `[SECTION]`-delimited prompt and returning coherent JSON-grounded answers. |
+| **Multimodal-ready** | Future iterations can attach screenshots of the current platform screen as context without changing the model or pipeline contract. |
+
+### Fallback: Mistral-7B-Instruct-v0.2 / Zephyr-7B-β
+
+| Property | Why it matters here |
+|----------|---------------------|
+| **Instruction-tuned** | Both models are fine-tuned on instruction-following datasets (Ultrachat, Orca), essential for consuming the structured prompt format produced by `_render_graph_prompt()`. |
+| **MT-Bench ~7.0 (competitive with GPT-3.5)** | At the <10B parameter tier, Mistral-7B matches GPT-3.5 on multi-turn chat, making it a viable fallback not just a last-resort. |
+| **HuggingFace serverless endpoint** | No GPU provisioning or cold-start penalty; same API contract as a self-hosted deployment, making it production-swappable via a single env-var change. |
+
+> The 3-model retry chain (Mistral-7B → Zephyr-7B → Phi-3-mini) in
+> `generate_response()` is ordered by instruction-following capability, so
+> quality degradation is graceful rather than random.
+
+---
+
 ## Context Graph Design
 
 ### Node Types
@@ -301,41 +331,57 @@ llm = ChatGroq(model="llama3-8b-8192", temperature=0.3)
 | Limitation | Description |
 |------------|-------------|
 | **In-memory only** | The graph is lost when the process ends. Production needs a persistent store (Neo4j, Redis Graph, or serialisation to PostgreSQL JSONB). |
-| **Shallow NLU** | Intent and entity extraction use keyword matching. A fine-tuned NER model or embedding similarity would be more robust. |
-| **No vector retrieval** | Resources are fetched by explicit graph edges, not semantic similarity. Adding a vector store (Chroma, Qdrant) would enable "find resources similar to this question". |
-| **Single user** | The demo models one user. Multi-tenant isolation (see below) is not yet implemented. |
-| **No conflict resolution** | If two turns reference conflicting goals, the system picks the most-recent one; no reasoning about conflicts. |
+| **Shallow NLU** | Intent scoring uses token-overlap + `difflib` fuzzy matching. Entity extraction now uses **semantic cosine similarity** (`all-MiniLM-L6-v2`) with token-overlap as fallback. A production upgrade would add a fine-tuned intent classifier. |
+| **Node-level vector search** | `ContextGraph.semantic_search()` embeds all node labels at creation time and retrieves via cosine similarity (batched numpy dot product). Cross-node semantic resource retrieval (e.g. Qdrant) not yet implemented. |
+| **Single user in demo** | The demo seeds one user. `tenant_id` is wired into `AssistantState` and validated in `build_relevant_subgraph()`, but a multi-user, multi-tenant load test has not been run. |
+| **No conflict resolution** | If two turns reference conflicting goals the system picks the most-recent one; no reasoning about conflicts. |
+| **Bounded history** | `update_graph` prunes ConversationTurn nodes beyond a `MAX_HISTORY_TURNS` sliding window (default 20, env-var configurable). Evicted turns are dropped in-memory; production would archive them to a cold store first. |
 | **Static screen state** | The current screen is seeded manually. A real integration needs a UI event hook to call `update_node(user_id, screen=current_screen_id)` on navigation. |
 
 ---
 
 ## Scaling to Multi-Tenant SaaS
 
-### Isolation
-- Use **tenant-prefixed node IDs** (`tenant_abc:user_maya`) or separate
-  Neo4j databases per tenant to guarantee data isolation.
+### Isolation — code-first, not just documentation
+
+Tenant isolation starts at **step zero** — the `AssistantState` carries
+`tenant_id` alongside `user_id`, and every `ContextGraph` instance is scoped
+to one tenant with a validation guard in `build_relevant_subgraph()`:
+
+```python
+# AssistantState (langgraph_flow.py)
+class AssistantState(TypedDict):
+    tenant_id: str   # e.g. "tenant_lincoln_high"   ← isolation key
+    user_id:   str
+    ...
+
+# ContextGraph.build_relevant_subgraph() (context_graph.py)
+if tenant_id is not None and tenant_id != self.tenant_id:
+    raise PermissionError(
+        f"Tenant mismatch: graph belongs to '{self.tenant_id}', "
+        f"but caller passed '{tenant_id}'.")
+```
+
+This guard is the first line of defence; subsequent guards in production
+(row-level security in Postgres, database-per-tenant in Neo4j) map 1-to-1
+onto the same `tenant_id`.
 
 ### Persistence
-- Replace NetworkX with **Neo4j** (via `neo4j` Python driver).
-  Graph schema maps 1-to-1 — node types → labels, relationships → relationship types.
-- Cache hot subgraphs in **Redis** with a TTL tied to session duration.
+- Replace NetworkX with **Neo4j** (dedicated database per tenant, or
+  shared database with tenant-prefixed node labels).
+- Cache hot subgraphs in **Redis** with key pattern
+  `subgraph:{tenant_id}:{user_id}` and session-duration TTL.
 
-### Graph construction
-- On user login, hydrate the graph from the platform's relational DB
-  (PostgreSQL): pull goals, courses, assignments, and recent conversation
-  history, build the NetworkX (or Neo4j) graph, and cache it in the session.
+### Graph hydration
+- On user login, query the platform's PostgreSQL for the user's goals,
+  courses, assignments, and recent turns; build the graph; cache in session.
 
 ### Retrieval augmentation
 - Embed resource descriptions with `text-embedding-3-small`, store in
-  **Qdrant**, and add a `semantic_search_resources(query, goal_id)` method
-  to `ContextGraph` that combines graph-filtered candidates with ANN search.
-
-### Observability
-- Log `subgraph_context` (without PII) per turn to a feature store
-  (Feast, Tecton) for offline analysis of context quality and LLM evaluation.
+  **Qdrant** with a `tenant_id` metadata filter, and add
+  `semantic_search_resources(query, goal_id, tenant_id)` to `ContextGraph`.
 
 ### Token budget management
-- `build_relevant_subgraph()` already caps `max_turns`.  In production,
+- `build_relevant_subgraph()` already caps `max_turns`. In production,
   add a token-counting step after `build_prompt` and iteratively drop
-  low-priority nodes (inactive goals, older turns) until the prompt fits
-  within the chosen context window budget.
+  low-priority nodes until the prompt fits the chosen context window.

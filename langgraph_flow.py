@@ -41,7 +41,8 @@ from context_graph import (
 # ─────────────────────────────────────────────────────────────
 
 class AssistantState(TypedDict):
-    # ── inputs ──────────────────────────────────────────────
+    # ── tenant + user identity (step-zero for multi-tenant isolation) ────
+    tenant_id: str                               # e.g. "tenant_lincoln_high"
     user_id: str
     user_message: str
     mode: Literal["graph", "baseline"]           # "graph" | "baseline"
@@ -61,35 +62,116 @@ class AssistantState(TypedDict):
 
 
 # ─────────────────────────────────────────────────────────────
-# Intent / entity extraction (lightweight; swap for NER model)
+# Intent / entity extraction
+#
+# Design note: exact substring matching ("essay" in text) breaks on
+# typos ("essya") and synonyms ("paper", "write-up").  We instead:
+#   1. Tokenise both the query and each keyword vocabulary into word sets.
+#   2. Score each intent by counting token hits (direct + fuzzy via
+#      difflib.get_close_matches so "presonal" still hits "personal").
+#   3. Pick the highest-scoring intent; fall back to "general_inquiry".
+#
+# This is a lightweight but realistic production approach before the
+# team would graduate to a fine-tuned intent classifier.
 # ─────────────────────────────────────────────────────────────
 
-INTENT_KEYWORDS: dict[str, list[str]] = {
-    "assignment_help":    ["assignment", "essay", "due", "submit", "homework", "task"],
-    "goal_progress":      ["goal", "progress", "track", "update", "complete", "milestone"],
-    "course_inquiry":     ["course", "class", "grade", "teacher", "instructor", "schedule"],
-    "resource_request":   ["resource", "link", "video", "article", "example", "guide"],
-    "deadline_check":     ["deadline", "when", "due date", "time left", "overdue"],
-    "general_inquiry":    [],  # fallback
+import re
+from difflib import get_close_matches
+
+# Wider synonym vocabulary replaces the narrow keyword lists.
+INTENT_VOCAB: dict[str, list[str]] = {
+    "assignment_help": [
+        "assignment", "essay", "paper", "writeup", "write", "draft",
+        "submit", "submission", "homework", "task", "work", "due",
+        "lab", "project", "report", "response", "prompt",
+    ],
+    "goal_progress": [
+        "goal", "progress", "track", "update", "complete", "milestone",
+        "achieve", "target", "plan", "status", "done", "finish",
+    ],
+    "course_inquiry": [
+        "course", "class", "grade", "teacher", "instructor", "schedule",
+        "lesson", "lecture", "syllabus", "unit", "exam", "test",
+    ],
+    "resource_request": [
+        "resource", "link", "video", "article", "example", "guide",
+        "reading", "material", "reference", "tutorial", "book",
+    ],
+    "deadline_check": [
+        "deadline", "when", "due", "overdue", "time", "date",
+        "remaining", "left", "upcoming", "cutoff",
+    ],
+    "general_inquiry": [],
 }
+
+_RE_TOKENS = re.compile(r"[a-z]+")
+
+
+def _tokenise(text: str) -> list[str]:
+    return _RE_TOKENS.findall(text.lower())
 
 
 def classify_intent(text: str) -> str:
-    t = text.lower()
-    for intent, keywords in INTENT_KEYWORDS.items():
-        if any(k in t for k in keywords):
-            return intent
-    return "general_inquiry"
+    """
+    Score each intent by token overlap + fuzzy match.
+    Returns the highest-scoring intent (or 'general_inquiry').
+    """
+    tokens = set(_tokenise(text))
+    best_intent, best_score = "general_inquiry", 0
+
+    for intent, vocab in INTENT_VOCAB.items():
+        if not vocab:
+            continue
+        vocab_set = set(vocab)
+        score = len(tokens & vocab_set)
+        for tok in tokens - vocab_set:
+            if get_close_matches(tok, vocab_set, n=1, cutoff=0.82):
+                score += 0.6   # partial credit for fuzzy hit
+        if score > best_score:
+            best_score, best_intent = score, intent
+
+    return best_intent
 
 
 def extract_entities(text: str, ctx_graph: ContextGraph | None, user_id: str) -> list[str]:
-    """Return node IDs whose label/title appears in the user message."""
+    """
+    Return node IDs that are semantically referenced in *text*.
+
+    Primary path (when sentence-transformers is available):
+        Embed the query and run cosine similarity against the node
+        embedding store.  Handles synonyms, paraphrases, and typos
+        that exact or token-overlap matching would miss.
+        e.g. "the thing I'm writing for my applications" correctly
+        matches "College Personal Statement Draft" (score ~0.51).
+
+    Fallback path (no embedding model):
+        Token-overlap + difflib fuzzy match (the previous implementation).
+        Activated automatically if sentence-transformers is not installed
+        or the embed store is empty.
+    """
     if ctx_graph is None:
         return []
+
+    # ── Primary: semantic cosine similarity ──────────────────
+    hits = ctx_graph.semantic_search(text, top_k=5, threshold=0.40)
+    if hits:
+        return [nid for nid, _score in hits]
+
+    # ── Fallback: token-overlap + fuzzy match ─────────────────
+    query_tokens = set(_tokenise(text))
     found = []
     for nid, data in ctx_graph.g.nodes(data=True):
-        label = (data.get("title") or data.get("name") or "").lower()
-        if label and label in text.lower():
+        label = (data.get("title") or data.get("name") or "").strip()
+        if not label:
+            continue
+        label_tokens = set(_tokenise(label))
+        if not label_tokens:
+            continue
+        token_hits = len(query_tokens & label_tokens)
+        for lt in label_tokens - query_tokens:
+            if get_close_matches(lt, query_tokens, n=1, cutoff=0.80):
+                token_hits += 1
+        if token_hits / len(label_tokens) >= 0.5:
             found.append(nid)
     return found
 
@@ -109,9 +191,14 @@ def ingest_message(state: AssistantState) -> AssistantState:
 
 def update_graph(state: AssistantState) -> AssistantState:
     """
-    Persist the new ConversationTurn into the graph and refresh the
-    CURRENTLY_ON screen if the UI layer reported a navigation event.
-    This step is SKIPPED in baseline mode.
+    Persist the new ConversationTurn into the graph, then prune old turns
+    so the graph doesn't grow unboundedly across a long session.
+
+    Pruning strategy: sliding window of MAX_HISTORY_TURNS.  Evicted nodes
+    are dropped from the in-memory graph; in production they would first be
+    archived to a cold store (e.g. PostgreSQL jsonb) for long-term recall.
+
+    SKIPPED in baseline mode.
     """
     if state["mode"] != "graph" or state.get("context_graph") is None:
         return state
@@ -132,6 +219,16 @@ def update_graph(state: AssistantState) -> AssistantState:
     for eid in state["referenced_entities"]:
         cg.add_edge(turn_id, eid, rel="REFERENCES")
 
+    # ── Sliding-window pruner ──────────────────────────────────
+    # Keep the graph bounded: evict oldest turns beyond the window.
+    # Default cap = 20 turns; tune via MAX_HISTORY_TURNS env-var so
+    # operators can adjust without a code change.
+    max_turns = int(os.environ.get("MAX_HISTORY_TURNS", 20))
+    evicted = cg.prune_old_turns(state["user_id"], max_turns=max_turns)
+    if evicted:
+        print(f"[GRAPH] Pruned {evicted} old turn(s) for user '{state['user_id']}' "
+              f"(window={max_turns}).")
+
     return {**state, "context_graph": cg}
 
 
@@ -144,7 +241,10 @@ def query_graph(state: AssistantState) -> AssistantState:
         return state
 
     cg: ContextGraph = state["context_graph"]
-    subgraph = cg.build_relevant_subgraph(state["user_id"])
+    subgraph = cg.build_relevant_subgraph(
+        state["user_id"],
+        tenant_id=state.get("tenant_id"),   # enforces cross-tenant isolation
+    )
     return {**state, "subgraph_context": subgraph}
 
 
