@@ -298,7 +298,7 @@ build_prompt
     │  ← baseline mode: renders a flat, generic prompt instead
     ▼
 generate_response
-    │  ← LLM call (GPT-4o-mini, temperature=0.3)
+    │  ← LLM call (Gemini 2.0 Flash, temperature=0.3)
     ▼
 post_process
     │  ← persists AI turn into graph (HAD_TURN)
