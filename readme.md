@@ -57,10 +57,10 @@ explicit, inspectable, and independently testable.
 
 ```mermaid
 flowchart TD
-    UI["🖥️ Platform UI\nuser_message · user_id · current_screen"]
+    UI["Platform UI\nuser_message · user_id · current_screen"]
 
     subgraph Pipeline["⚙️ LangGraph Pipeline"]
-        A["1️⃣ ingest_message\nClassify intent · Semantic entity extraction\n(all-MiniLM-L6-v2 cosine similarity)"]
+        A["1️ ingest_message\nClassify intent · Semantic entity extraction\n(all-MiniLM-L6-v2 cosine similarity)"]
         B["2️⃣ update_graph\nPersist ConversationTurn\nSliding-window pruner MAX_HISTORY_TURNS"]
         C["3️⃣ query_graph\nbuild_relevant_subgraph()\nTenant-isolated subgraph pull"]
         D["4️⃣ build_prompt\nSerialise subgraph → structured prompt"]
