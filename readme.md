@@ -218,7 +218,7 @@ and strong instruction-following — which informed the model choices below.
 
 | Node Type          | Key Attributes                                              | Stored In Graph |
 |--------------------|-------------------------------------------------------------|-----------------|
-| `User`             | id, name, role, grade, school                              |  Yes             |
+| `User`             | id, name, role (student/parent/counselor), grade, school   | ✅              |
 | `Goal`             | title, deadline, progress %, status, description           |  Yes             |
 | `Course`           | name, instructor, schedule, grade_earned                   |  Yes             |
 | `Assignment`       | title, due_date, status, instructions                      |  Yes             |
@@ -252,7 +252,7 @@ and strong instruction-following — which informed the model choices below.
 | LLM instructions / tone              | ❌    | ✅            |
 | Raw user message                      | ❌    | ✅            |
 
-The graph acts as a **persistent, queryable memory store**.  The prompt only
+The graph acts as a **persistent, queryable memory store**. The prompt only
 receives a lean, turn-relevant slice, keeping token usage low and response
 quality high.
 
@@ -309,7 +309,7 @@ post_process
 
 ## Graph vs. Baseline — Why It Matters
 
-The following is **actual output** from running `main.py`.  All three turns use the
+The following is **actual output** from running `main.py`. All three turns use the
 same student question; the only difference is whether the context graph is consulted.
 
 ---
@@ -448,7 +448,6 @@ The demo in `main.py` runs _the same 3-turn conversation_ twice: once through th
 pipeline (subgraph injected into the system prompt). The same LLM call is used in
 both modes, so any response quality difference is attributable purely to the
 context strategy.
-
 **Evaluation criteria:**
 | Criteria | What we look for |
 |----------|------------------|
@@ -518,46 +517,23 @@ structural advantage is identical).
 
 ## Scaling to Multi-Tenant SaaS
 
-### Isolation — code-first, not just documentation
+The current architecture uses `tenant_id` validation to ensure data isolation at the state layer. To scale this for a production SaaS platform like the one described in the assignment, the following layers would be implemented:
 
-Tenant isolation starts at **step zero** — the `AssistantState` carries
-`tenant_id` alongside `user_id`, and every `ContextGraph` instance is scoped
-to one tenant with a validation guard in `build_relevant_subgraph()`:
+### 1. Role-Based Context Selection (RBAC)
+As highlighted in the assignment PDF (Parent vs Student flows), the `build_relevant_subgraph` logic should be role-aware:
+- **Student View**: Pulls only their own goals, assignments, and conversation turns.
+- **Parent View**: Pulls linked student data (progress, deadlines) but applies privacy filters to exclude certain student-counselor interactions.
+- **Counselor View**: Aggregates data across an entire `school` or `grade` node cluster.
 
-```python
-# AssistantState (langgraph_flow.py)
-class AssistantState(TypedDict):
-    tenant_id: str   # e.g. "tenant_lincoln_high"   ← isolation key
-    user_id:   str
-    ...
+### 2. Persistent Multi-Model Store
+Instead of an in-memory NetworkX graph, a production deployment would use:
+- **Graph Database**: Neo4j (dedicated database per tenant) for high-performance relationship traversal.
+- **Vector Database**: Qdrant or Pinecone for semantic resource retrieval, filtered by `tenant_id` and `user_role`.
+- **Cache**: Hot subgraphs stored in Redis with key pattern `subgraph:{tenant_id}:{user_id}` for sub-millisecond retrieval.
 
-# ContextGraph.build_relevant_subgraph() (context_graph.py)
-if tenant_id is not None and tenant_id != self.tenant_id:
-    raise PermissionError(
-        f"Tenant mismatch: graph belongs to '{self.tenant_id}', "
-        f"but caller passed '{tenant_id}'.")
-```
+### 3. Distributed Orchestration
+LangGraph nodes like `update_graph` and `generate_response` would run as distributed concurrent tasks (e.g., via Temporal or Celery) to handle thousands of simultaneous user sessions. 
 
-This guard is the first line of defence; subsequent guards in production
-(row-level security in Postgres, database-per-tenant in Neo4j) map 1-to-1
-onto the same `tenant_id`.
-
-### Persistence
-- Replace NetworkX with **Neo4j** (dedicated database per tenant, or
-  shared database with tenant-prefixed node labels).
-- Cache hot subgraphs in **Redis** with key pattern
-  `subgraph:{tenant_id}:{user_id}` and session-duration TTL.
-
-### Graph hydration
-- On user login, query the platform's PostgreSQL for the user's goals,
-  courses, assignments, and recent turns; build the graph; cache in session.
-
-### Retrieval augmentation
-- Embed resource descriptions with `text-embedding-3-small`, store in
-  **Qdrant** with a `tenant_id` metadata filter, and add
-  `semantic_search_resources(query, goal_id, tenant_id)` to `ContextGraph`.
-
-### Token budget management
-- `build_relevant_subgraph()` already caps `max_turns`. In production,
-  add a token-counting step after `build_prompt` and iteratively drop
-  low-priority nodes until the prompt fits the chosen context window.
+### 4. Graph Hydration & Sync
+- **Hydration**: On user login, the graph is seeded by querying the platform's primary relational database (PostgreSQL).
+- **Webhooks**: Changes in the platform UI (e.g., student completes an assignment) trigger graph updates via webhooks to keep the context "live."

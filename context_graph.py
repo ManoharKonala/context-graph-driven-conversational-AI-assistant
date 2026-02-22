@@ -108,7 +108,7 @@ class BaseNode(BaseModel):
 class UserNode(BaseNode):
     type: Literal["User"] = "User"
     name: str
-    role: str
+    role: Literal["student", "parent", "counselor"]
     grade: str = ""
     school: str = ""
 
