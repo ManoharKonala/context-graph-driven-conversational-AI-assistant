@@ -322,36 +322,6 @@ def build_prompt(state: AssistantState) -> AssistantState:
     return {**state, "system_prompt": sys_prompt}
 
 
-# ── LLM call ─────────────────────────────────────────────────
-
-def _build_llm():
-    """Return Gemini as primary LLM; fall back to HuggingFace if unavailable."""
-    gemini_key = os.environ.get("GOOGLE_API_KEY", "")
-    hf_token   = os.environ.get("HF_TOKEN", "")
-
-    if gemini_key:
-        try:
-            return ChatGoogleGenerativeAI(
-                model="gemini-2.0-flash",
-                temperature=0.3,
-                google_api_key=gemini_key,
-            )
-        except Exception as e:
-            print(f"[WARN] Gemini init failed ({e}); trying HuggingFace fallback…")
-
-    if hf_token:
-        endpoint = HuggingFaceEndpoint(
-            repo_id="mistralai/Mistral-7B-Instruct-v0.2",
-            huggingfacehub_api_token=hf_token,
-            temperature=0.3,
-            max_new_tokens=512,
-        )
-        return ChatHuggingFace(llm=endpoint)
-
-    raise RuntimeError(
-        "No LLM available. Set GOOGLE_API_KEY or HF_TOKEN environment variables."
-    )
-
 
 def generate_response(state: AssistantState) -> AssistantState:
     history = state.get("conversation_history") or []
