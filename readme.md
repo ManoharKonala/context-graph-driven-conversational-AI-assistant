@@ -59,13 +59,13 @@ explicit, inspectable, and independently testable.
 flowchart TD
     UI["Platform UI\nuser_message · user_id · current_screen"]
 
-    subgraph Pipeline["⚙️ LangGraph Pipeline"]
+    subgraph Pipeline[" LangGraph Pipeline"]
         A["1️ ingest_message\nClassify intent · Semantic entity extraction\n(all-MiniLM-L6-v2 cosine similarity)"]
-        B["2️⃣ update_graph\nPersist ConversationTurn\nSliding-window pruner MAX_HISTORY_TURNS"]
-        C["3️⃣ query_graph\nbuild_relevant_subgraph()\nTenant-isolated subgraph pull"]
-        D["4️⃣ build_prompt\nSerialise subgraph → structured prompt"]
-        E["5️⃣ generate_response\nGemini 2.0 Flash\n↓ fallback: Mistral-7B → Zephyr-7B"]
-        F["6️⃣ post_process\nPersist AI turn · refresh history"]
+        B["2️ update_graph\nPersist ConversationTurn\nSliding-window pruner MAX_HISTORY_TURNS"]
+        C["3️ query_graph\nbuild_relevant_subgraph()\nTenant-isolated subgraph pull"]
+        D["4️ build_prompt\nSerialise subgraph → structured prompt"]
+        E["5️ generate_response\nGemini 2.0 Flash\n↓ fallback: Mistral-7B → Zephyr-7B"]
+        F["6️ post_process\nPersist AI turn · refresh history"]
     end
 
     subgraph GraphDB["🗄️ ContextGraph (NetworkX)"]
@@ -160,9 +160,9 @@ Create a `.env` file in the project root **or** export the variables in your she
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GOOGLE_API_KEY` | ✅ Yes | — | Gemini API key. Get one free at [aistudio.google.com](https://aistudio.google.com/). |
-| `HF_TOKEN` | ⬜ No | — | HuggingFace access token. Only needed if Gemini is unavailable and the fallback LLM chain activates. |
-| `MAX_HISTORY_TURNS` | ⬜ No | `20` | Maximum `ConversationTurn` nodes kept per user. Older turns are pruned automatically — no restart needed. |
+| `GOOGLE_API_KEY` |  Yes | — | Gemini API key. Get one free at [aistudio.google.com](https://aistudio.google.com/). |
+| `HF_TOKEN` |  No | — | HuggingFace access token. Only needed if Gemini is unavailable and the fallback LLM chain activates. |
+| `MAX_HISTORY_TURNS` |  No | `20` | Maximum `ConversationTurn` nodes kept per user. Older turns are pruned automatically — no restart needed. |
 
 ### Example `.env`
 
@@ -172,7 +172,7 @@ HF_TOKEN=hf_...
 MAX_HISTORY_TURNS=20
 ```
 
-> ⚠️ Add `.env` to your `.gitignore`. Never commit API keys.
+>  Add `.env` to your `.gitignore`. Never commit API keys.
 
 ---
 
@@ -218,13 +218,13 @@ and strong instruction-following — which informed the model choices below.
 
 | Node Type          | Key Attributes                                              | Stored In Graph |
 |--------------------|-------------------------------------------------------------|-----------------|
-| `User`             | id, name, role, grade, school                              | ✅              |
-| `Goal`             | title, deadline, progress %, status, description           | ✅              |
-| `Course`           | name, instructor, schedule, grade_earned                   | ✅              |
-| `Assignment`       | title, due_date, status, instructions                      | ✅              |
-| `Screen`           | name, description (current UI location)                    | ✅              |
-| `ConversationTurn` | role, content, intent, entity refs, timestamp              | ✅              |
-| `Resource`         | title, url, type (article/video/guide)                     | ✅              |
+| `User`             | id, name, role, grade, school                              |  Yes             |
+| `Goal`             | title, deadline, progress %, status, description           |  Yes             |
+| `Course`           | name, instructor, schedule, grade_earned                   |  Yes             |
+| `Assignment`       | title, due_date, status, instructions                      |  Yes             |
+| `Screen`           | name, description (current UI location)                    |  Yes             |
+| `ConversationTurn` | role, content, intent, entity refs, timestamp              |  Yes             |
+| `Resource`         | title, url, type (article/video/guide)                     |  Yes             |
 
 ### Relationship Types
 
